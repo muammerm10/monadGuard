@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { NextPage } from "next";
 import { parseEther } from "viem";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import toast from "react-hot-toast";
 import { ExclamationTriangleIcon, ShieldExclamationIcon, DocumentArrowUpIcon, CpuChipIcon } from "@heroicons/react/24/outline";
 import { MONAD_GUARD_ADDRESS, MONAD_GUARD_ABI } from "~~/utils/monadGuard";
 
 const SubmitThreat: NextPage = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const { isConnected } = useAccount();
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -92,6 +96,11 @@ const SubmitThreat: NextPage = () => {
   };
 
   const handleSubmit = async () => {
+    if (!isConnected) {
+      toast.error("Lütfen önce sağ üst köşeden cüzdanınızı bağlayın!");
+      return;
+    }
+
     if (!hash || hash.length !== 66) {
       toast.error("Invalid SHA-256 hash.");
       return;
@@ -119,13 +128,15 @@ const SubmitThreat: NextPage = () => {
     }
   };
 
+  if (!mounted) return null;
+
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-2xl bg-base-200/50 backdrop-blur-md rounded-3xl p-8 border border-base-300 shadow-2xl">
         <div className="text-center mb-10">
           <ShieldExclamationIcon className="mx-auto h-12 w-12 text-primary" />
-          <h2 className="mt-6 text-3xl font-extrabold text-white tracking-tight">Submit a New Threat</h2>
-          <p className="mt-2 text-sm text-base-content/70">
+          <h2 className="mt-6 text-3xl font-extrabold text-white tracking-tight" suppressHydrationWarning>Submit a New Threat</h2>
+          <p className="mt-2 text-sm text-base-content/70" suppressHydrationWarning>
             Drag and drop a PE or ELF file to run the C++ Heuristics Engine.
           </p>
         </div>
@@ -133,8 +144,8 @@ const SubmitThreat: NextPage = () => {
         <div className="bg-warning/10 border border-warning/20 rounded-xl p-4 flex items-start space-x-3 mb-6">
           <ExclamationTriangleIcon className="h-6 w-6 text-warning shrink-0 mt-0.5" />
           <div>
-            <h3 className="text-sm font-medium text-warning">Stake Requirement</h3>
-            <p className="text-xs text-warning/80 mt-1">
+            <h3 className="text-sm font-medium text-warning" suppressHydrationWarning>Stake Requirement</h3>
+            <p className="text-xs text-warning/80 mt-1" suppressHydrationWarning>
               Submitting a threat requires exactly <strong className="font-bold text-warning">10 MON</strong> as collateral to prevent spam. This stake will be locked in the smart contract.
             </p>
           </div>
@@ -159,14 +170,14 @@ const SubmitThreat: NextPage = () => {
             {isAnalyzing ? (
               <div className="flex flex-col items-center">
                 <span className="loading loading-spinner loading-lg text-primary mb-4"></span>
-                <p className="text-lg font-medium text-white">Running 0-Day Heuristics Analysis...</p>
-                <p className="text-sm text-base-content/60 mt-2">Invoking native C++ agent...</p>
+                <p className="text-lg font-medium text-white" suppressHydrationWarning>Running 0-Day Heuristics Analysis...</p>
+                <p className="text-sm text-base-content/60 mt-2" suppressHydrationWarning>Invoking native C++ agent...</p>
               </div>
             ) : (
               <div className="flex flex-col items-center">
                 <DocumentArrowUpIcon className="h-16 w-16 text-base-content/40 mb-4" />
-                <p className="text-lg font-medium text-white">Click or drag an executable here</p>
-                <p className="text-sm text-base-content/60 mt-2">Supports Windows PE (.exe) and Linux ELF</p>
+                <p className="text-lg font-medium text-white" suppressHydrationWarning>Click or drag an executable here</p>
+                <p className="text-sm text-base-content/60 mt-2" suppressHydrationWarning>Supports Windows PE (.exe) and Linux ELF</p>
               </div>
             )}
           </div>
@@ -177,32 +188,32 @@ const SubmitThreat: NextPage = () => {
                 <CpuChipIcon className="h-24 w-24 text-primary/10" />
               </div>
               
-              <h3 className="text-xl font-bold text-white mb-4 relative z-10 flex items-center gap-2">
+              <h3 className="text-xl font-bold text-white mb-4 relative z-10 flex items-center gap-2" suppressHydrationWarning>
                 <CpuChipIcon className="h-6 w-6 text-primary" />
                 Analysis Results
               </h3>
               
               <div className="space-y-4 relative z-10">
                 <div>
-                  <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1">File Name</p>
-                  <p className="font-medium text-base-content">{file?.name}</p>
+                  <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1" suppressHydrationWarning>File Name</p>
+                  <p className="font-medium text-base-content" suppressHydrationWarning>{file?.name}</p>
                 </div>
                 
                 <div>
-                  <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1">SHA-256 Hash</p>
-                  <p className="font-mono text-sm text-primary break-all">{hash}</p>
+                  <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1" suppressHydrationWarning>SHA-256 Hash</p>
+                  <p className="font-mono text-sm text-primary break-all" suppressHydrationWarning>{hash}</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1">0-Day Severity Score</p>
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${score >= 75 ? "bg-error text-error-content" : score >= 40 ? "bg-warning text-warning-content" : "bg-success text-success-content"}`}>
+                    <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1" suppressHydrationWarning>0-Day Severity Score</p>
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold inline-block ${score >= 75 ? "bg-error text-error-content" : score >= 40 ? "bg-warning text-warning-content" : "bg-success text-success-content"}`} suppressHydrationWarning>
                       {score} / 100
                     </span>
                   </div>
                   <div>
-                    <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1">Malware Family</p>
-                    <p className="font-medium text-base-content">{family}</p>
+                    <p className="text-xs text-base-content/60 uppercase tracking-wider mb-1" suppressHydrationWarning>Malware Family</p>
+                    <p className="font-medium text-base-content" suppressHydrationWarning>{family}</p>
                   </div>
                 </div>
               </div>
@@ -210,9 +221,9 @@ const SubmitThreat: NextPage = () => {
 
             {isKnown ? (
               <div className="bg-error/10 border border-error/30 rounded-xl p-4 text-center">
-                <p className="text-error font-bold">Threat is already known to Oracle (MalwareBazaar).</p>
-                <p className="text-sm text-error/80 mt-1">Cannot stake on a known threat.</p>
-                <button className="btn btn-outline btn-error mt-4" onClick={() => setAnalysisDone(false)}>
+                <p className="text-error font-bold" suppressHydrationWarning>Threat is already known to Oracle (MalwareBazaar).</p>
+                <p className="text-sm text-error/80 mt-1" suppressHydrationWarning>Cannot stake on a known threat.</p>
+                <button className="btn btn-outline btn-error mt-4" onClick={() => setAnalysisDone(false)} suppressHydrationWarning>
                   Scan Another File
                 </button>
               </div>
@@ -222,21 +233,24 @@ const SubmitThreat: NextPage = () => {
                   type="button"
                   onClick={() => setAnalysisDone(false)}
                   className="btn btn-outline border-base-300 flex-1"
+                  suppressHydrationWarning
                 >
                   Reset
                 </button>
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isPending || isConfirming}
-                  className="btn btn-primary flex-[2] text-lg h-14 shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_25px_rgba(123,63,228,0.5)] border-none"
+                  disabled={isPending || isConfirming || !isConnected}
+                  className={`btn flex-[2] text-lg h-14 shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_25px_rgba(123,63,228,0.5)] border-none ${!isConnected ? "btn-disabled bg-base-300 text-base-content/50" : "btn-primary"}`}
                 >
-                  {isPending ? (
+                  {!isConnected ? (
+                    <span suppressHydrationWarning>Lütfen Cüzdan Bağlayın</span>
+                  ) : isPending ? (
                     <span className="loading loading-spinner"></span>
                   ) : isConfirming ? (
-                    <span>Confirming...</span>
+                    <span suppressHydrationWarning>Confirming...</span>
                   ) : (
-                    <span>Stake 10 MON & Log Threat</span>
+                    <span suppressHydrationWarning>Stake 10 MON & Log Threat</span>
                   )}
                 </button>
               </div>
@@ -246,8 +260,8 @@ const SubmitThreat: NextPage = () => {
 
         {isConfirmed && (
           <div className="mt-6 bg-success/10 border border-success/20 rounded-xl p-4 text-center">
-            <p className="text-success font-medium">Threat logged successfully!</p>
-            <p className="text-xs text-success/70 mt-1 mono break-all">TX Hash: {hashData}</p>
+            <p className="text-success font-medium" suppressHydrationWarning>Threat logged successfully!</p>
+            <p className="text-xs text-success/70 mt-1 mono break-all" suppressHydrationWarning>TX Hash: {hashData}</p>
           </div>
         )}
       </div>
