@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NextPage } from "next";
 import { useReadContract } from "wagmi";
-import { CheckCircleIcon, MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import {
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  MagnifyingGlassIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 import { MONAD_GUARD_ABI, MONAD_GUARD_ADDRESS } from "~~/utils/monadGuard";
 
 const HashLookup: NextPage = () => {
@@ -23,6 +28,36 @@ const HashLookup: NextPage = () => {
       enabled: !!queryHash,
     },
   });
+
+  const [mbResult, setMbResult] = useState<{ isKnown: boolean; details?: any } | null>(null);
+  const [isFetchingMb, setIsFetchingMb] = useState(false);
+
+  useEffect(() => {
+    if (!queryHash) {
+      setMbResult(null);
+      return;
+    }
+
+    const fetchMb = async () => {
+      setIsFetchingMb(true);
+      try {
+        const res = await fetch("/api/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hash: queryHash }),
+        });
+        const data = await res.json();
+        setMbResult(data);
+      } catch (e) {
+        console.error("MalwareBazaar error", e);
+        setMbResult({ isKnown: false });
+      } finally {
+        setIsFetchingMb(false);
+      }
+    };
+
+    fetchMb();
+  }, [queryHash]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,27 +102,55 @@ const HashLookup: NextPage = () => {
             <button
               type="submit"
               className="btn btn-primary btn-lg shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_20px_rgba(123,63,228,0.5)] border-none shrink-0"
-              disabled={isFetching}
+              disabled={isFetching || isFetchingMb}
             >
-              {isFetching ? <span className="loading loading-spinner"></span> : "Scan Hash"}
+              {isFetching || isFetchingMb ? <span className="loading loading-spinner"></span> : "Scan Hash"}
             </button>
           </form>
         </div>
 
-        {queryHash && !isFetching && !error && (
+        {queryHash && !isFetching && !isFetchingMb && !error && (
           <div className="animate-fadeIn">
             {isKnown ? (
               <div className="bg-error/10 border border-error/30 rounded-2xl p-8 flex flex-col items-center text-center shadow-[0_0_30px_rgba(239,68,68,0.15)]">
                 <div className="h-20 w-20 bg-error/20 rounded-full flex items-center justify-center mb-4">
                   <XCircleIcon className="h-12 w-12 text-error" />
                 </div>
-                <h3 className="text-2xl font-bold text-error mb-2">Threat Detected!</h3>
+                <h3 className="text-2xl font-bold text-error mb-2">0-Day Threat Detected!</h3>
                 <p className="text-base-content mb-4 max-w-xl">
-                  This hash is recorded in the MonadGuard registry as a known 0-day threat. Exercise extreme caution.
+                  This hash is recorded in the <strong>MonadGuard</strong> registry as a known 0-day threat. Exercise
+                  extreme caution.
                 </p>
                 <div className="bg-base-100/50 p-4 rounded-xl w-full border border-error/20">
                   <p className="text-xs text-base-content/50 uppercase tracking-widest mb-1">Queried Hash</p>
                   <p className="font-mono text-sm text-error break-all">{queryHash}</p>
+                </div>
+              </div>
+            ) : mbResult?.isKnown ? (
+              <div className="bg-warning/10 border border-warning/30 rounded-2xl p-8 flex flex-col items-center text-center shadow-[0_0_30px_rgba(245,158,11,0.15)]">
+                <div className="h-20 w-20 bg-warning/20 rounded-full flex items-center justify-center mb-4">
+                  <ExclamationTriangleIcon className="h-12 w-12 text-warning" />
+                </div>
+                <h3 className="text-2xl font-bold text-warning mb-2">Known Public Malware</h3>
+                <p className="text-base-content mb-2 max-w-xl">
+                  This hash is <strong>not</strong> a 0-day in MonadGuard, but it was found in the public{" "}
+                  <strong>MalwareBazaar</strong> database!
+                </p>
+                {mbResult.details && (
+                  <div className="flex gap-2 mb-4 justify-center flex-wrap">
+                    {mbResult.details.signature && (
+                      <span className="badge badge-error badge-outline">{mbResult.details.signature}</span>
+                    )}
+                    {mbResult.details.tags?.slice(0, 3).map((tag: string) => (
+                      <span key={tag} className="badge badge-warning badge-outline">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="bg-base-100/50 p-4 rounded-xl w-full border border-warning/20">
+                  <p className="text-xs text-base-content/50 uppercase tracking-widest mb-1">Queried Hash</p>
+                  <p className="font-mono text-sm text-warning break-all">{queryHash}</p>
                 </div>
               </div>
             ) : (
@@ -97,8 +160,8 @@ const HashLookup: NextPage = () => {
                 </div>
                 <h3 className="text-2xl font-bold text-success mb-2">No Threat Found</h3>
                 <p className="text-base-content mb-4 max-w-xl">
-                  This hash is not currently in the MonadGuard registry. Note that this does not guarantee the file is
-                  safe, only that it is unknown to this registry.
+                  This hash is neither in the MonadGuard 0-day registry nor in the public MalwareBazaar database. Note
+                  that this does not guarantee the file is safe.
                 </p>
                 <div className="bg-base-100/50 p-4 rounded-xl w-full border border-success/20">
                   <p className="text-xs text-base-content/50 uppercase tracking-widest mb-1">Queried Hash</p>
