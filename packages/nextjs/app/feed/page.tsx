@@ -1,20 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Address } from "@scaffold-ui/components";
 import type { NextPage } from "next";
-import { useWatchContractEvent, useWriteContract } from "wagmi";
-import { SignalIcon } from "@heroicons/react/24/outline";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { SignalIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useScaffoldEventHistory } from "~~/hooks/scaffold-eth";
 import { MONAD_GUARD_ABI, MONAD_GUARD_ADDRESS } from "~~/utils/monadGuard";
-
-type ThreatEvent = {
-  hash: string;
-  score: number;
-  family: string;
-  submitter: string;
-  timestamp: Date;
-  rewarded?: boolean;
-};
 
 function formatDistanceToNow(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -27,61 +19,40 @@ function formatDistanceToNow(date: Date) {
 }
 
 const ThreatFeed: NextPage = () => {
-  const [events, setEvents] = useState<ThreatEvent[]>([]);
-  const { writeContractAsync } = useWriteContract();
   const [rewarding, setRewarding] = useState<string | null>(null);
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
-  // Watch for new ThreatLogged events
-  useWatchContractEvent({
+  const { address } = useAccount();
+  const { data: contractOwner } = useReadContract({
     address: MONAD_GUARD_ADDRESS,
     abi: MONAD_GUARD_ABI,
-    eventName: "ThreatLogged",
-    onLogs(logs) {
-      const newEvents: ThreatEvent[] = logs.map((log: any) => ({
-        hash: log.args.hash,
-        score: log.args.score,
-        family: log.args.family,
-        submitter: log.args.submitter,
-        timestamp: new Date(), // Local timestamp as fallback
-        rewarded: false,
-      }));
+    functionName: "owner",
+  });
+  const isOwner = address?.toLowerCase() === (contractOwner as string)?.toLowerCase();
 
-      setEvents(prev => [...newEvents, ...prev].slice(0, 50)); // Keep last 50
-    },
+  const { writeContractAsync } = useWriteContract();
+
+  // Feature 2: Persistent history — fetch from block 0
+  const { data: historicalEvents, isLoading } = useScaffoldEventHistory({
+    contractName: "MonadGuard",
+    eventName: "ThreatLogged",
+    fromBlock: 0n,
+    blockData: true,
   });
 
-  // Mock data for initial view if no events (optional, for demonstration)
-  useEffect(() => {
-    setEvents(prev => {
-      if (prev.length === 0) {
-        return [
-          {
-            hash: "0x8d5c2e0b5f134a690e8f7c9e1f13b1a9e8f7c9e1f13b1a9e8f7c9e1f13b1a9f2",
-            score: 85,
-            family: "Ransomware",
-            submitter: "0x1234567890123456789012345678901234567890",
-            timestamp: new Date(Date.now() - 1000 * 60 * 5),
-          },
-          {
-            hash: "0x3a1be4d90e8f7c9e1f13b1a9e8f7c9e1f13b1a9e8f7c9e1f13b1a9e8f7c9e1f1",
-            score: 60,
-            family: "Trojan",
-            submitter: "0xabcdef0123456789abcdef0123456789abcdef01",
-            timestamp: new Date(Date.now() - 1000 * 60 * 45),
-          },
-          {
-            hash: "0xc7f211b30e8f7c9e1f13b1a9e8f7c9e1f13b1a9e8f7c9e1f13b1a9e8f7c9e1f1",
-            score: 25,
-            family: "Spyware",
-            submitter: "0x9876543210987654321098765432109876543210",
-            timestamp: new Date(Date.now() - 1000 * 60 * 120),
-            rewarded: true,
-          },
-        ];
-      }
-      return prev;
-    });
-  }, []);
+  // Build deduplicated, sorted event list
+  const events = (historicalEvents ?? [])
+    .slice()
+    .sort((a, b) => Number((b.block?.number ?? 0n) - (a.block?.number ?? 0n)))
+    .slice(0, 50);
+
+  // Feature 3: Critical alert banner
+  const now = Date.now();
+  const last24h = now - 24 * 60 * 60 * 1000;
+  const criticalCount = events.filter(ev => {
+    const ts = ev.block?.timestamp ? Number(ev.block.timestamp) * 1000 : 0;
+    return ts >= last24h && (ev.args.score ?? 0) >= 75;
+  }).length;
 
   const getScoreColor = (score: number) => {
     if (score >= 75) return "bg-error text-error-content shadow-[0_0_10px_rgba(239,68,68,0.5)]";
@@ -90,6 +61,7 @@ const ThreatFeed: NextPage = () => {
   };
 
   const truncateHash = (hash: string) => {
+    if (!hash) return "...";
     return hash.substring(0, 10) + "..." + hash.substring(hash.length - 8);
   };
 
@@ -102,8 +74,6 @@ const ThreatFeed: NextPage = () => {
         functionName: "rewardSubmitter",
         args: [hash as `0x${string}`],
       });
-      // Update local state to show it was rewarded
-      setEvents(prev => prev.map(e => (e.hash === hash ? { ...e, rewarded: true } : e)));
     } catch (e) {
       console.error("Failed to reward:", e);
     } finally {
@@ -114,6 +84,22 @@ const ThreatFeed: NextPage = () => {
   return (
     <div className="flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8 grow">
       <div className="w-full max-w-6xl">
+        {/* Feature 3: High severity alert banner */}
+        {criticalCount > 0 && !alertDismissed && (
+          <div className="flex items-center justify-between gap-4 mb-6 px-5 py-3 rounded-xl border border-error/40 bg-error/10 text-error shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+            <span className="text-sm font-semibold">
+              ⚠ {criticalCount} critical 0-day threat{criticalCount > 1 ? "s" : ""} detected in the last 24h
+            </span>
+            <button
+              onClick={() => setAlertDismissed(true)}
+              className="btn btn-ghost btn-xs text-error"
+              aria-label="Dismiss alert"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row justify-between items-end mb-8 border-b border-base-300 pb-4">
           <div>
             <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
@@ -148,58 +134,72 @@ const ThreatFeed: NextPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-base-300/50">
-                {events.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-12 text-base-content/50">
+                      <span className="loading loading-spinner loading-lg text-primary"></span>
+                    </td>
+                  </tr>
+                ) : events.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-12 text-base-content/50">
                       Waiting for threats to be logged...
                     </td>
                   </tr>
                 ) : (
-                  events.map((ev, idx) => (
-                    <tr key={idx} className="hover:bg-base-300/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center justify-center min-w-[3rem] ${getScoreColor(ev.score)}`}
-                        >
-                          {ev.score}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-mono text-sm text-base-content/90">{truncateHash(ev.hash)}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="bg-base-300 border border-base-100 px-2 py-1 rounded text-xs font-medium text-base-content/80">
-                          {ev.family}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Address address={ev.submitter} format="short" />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content/60">
-                        {formatDistanceToNow(ev.timestamp)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {ev.rewarded ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-success/20 text-success text-xs font-bold border border-success/30">
-                            ✓ Rewarded
-                          </span>
-                        ) : (
-                          <button
-                            className="btn btn-sm btn-outline btn-primary text-xs tooltip tooltip-left"
-                            data-tip="Reward 20 MON (Admin)"
-                            onClick={() => handleReward(ev.hash)}
-                            disabled={rewarding === ev.hash}
+                  events.map((ev, idx) => {
+                    const ts = ev.block?.timestamp ? new Date(Number(ev.block.timestamp) * 1000) : new Date();
+                    const isRewarded = false; // read from contract if needed
+                    return (
+                      <tr key={idx} className="hover:bg-base-300/30 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center justify-center min-w-[3rem] ${getScoreColor(ev.args.score ?? 0)}`}
                           >
-                            {rewarding === ev.hash ? (
-                              <span className="loading loading-spinner loading-xs"></span>
-                            ) : (
-                              "Reward"
-                            )}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                            {ev.args.score}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="font-mono text-sm text-base-content/90">
+                            {truncateHash(ev.args.hash ?? "")}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="bg-base-300 border border-base-100 px-2 py-1 rounded text-xs font-medium text-base-content/80">
+                            {ev.args.family}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Address address={ev.args.submitter as `0x${string}`} format="short" />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content/60">
+                          {formatDistanceToNow(ts)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          {isRewarded ? (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-success/20 text-success text-xs font-bold border border-success/30">
+                              ✓ Rewarded
+                            </span>
+                          ) : isOwner ? (
+                            <button
+                              className="btn btn-sm btn-outline btn-primary text-xs tooltip tooltip-left"
+                              data-tip="Reward 20 MON (Admin)"
+                              onClick={() => handleReward(ev.args.hash ?? "")}
+                              disabled={rewarding === ev.args.hash}
+                            >
+                              {rewarding === ev.args.hash ? (
+                                <span className="loading loading-spinner loading-xs"></span>
+                              ) : (
+                                "Reward"
+                              )}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-base-content/50 italic">Awaiting Admin</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

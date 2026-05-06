@@ -4,6 +4,8 @@
 #include <iostream>
 #include <curl/curl.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 using namespace std;
 
@@ -61,7 +63,7 @@ int main(int argc, char *argv[]) {
 
   if (parseBazaarResponse(response, family)) {
     if (apiMode) {
-      cout << "{\"hash\": \"" << hash << "\", \"score\": 100, \"family\": \"" << family << "\", \"isKnown\": true}" << endl;
+      cout << "{\"hash\": \"" << hash << "\", \"score\": 100, \"family\": \"" << family << "\", \"isKnown\": true, \"isCheapClone\": false}" << endl;
     } else {
       cout << "[!] BİLİNEN ZARARLI YAZILIM TESPİT EDİLDİ (KNOWN MALWARE DETECTED)!" << endl;
       cout << "    Family: " << family << endl;
@@ -76,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  HEURISTICS_RESULT hRes = runHeuristics(data, hash);
+  HEURISTICS_RESULT hRes = runHeuristics(data, hash, apiMode);
 
   string verdict;
   if (hRes.probabilityScore < 40) {
@@ -88,7 +90,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (apiMode) {
-    cout << "{\"hash\": \"" << hash << "\", \"score\": " << hRes.probabilityScore << ", \"family\": \"UNKNOWN\", \"isKnown\": false}" << endl;
+    cout << "{\"hash\": \"" << hash << "\", \"score\": " << hRes.probabilityScore << ", \"family\": \"UNKNOWN\", \"isKnown\": false, \"isCheapClone\": " << (hRes.isCheapClone ? "true" : "false") << "}" << endl;
   } else {
     cout << "\n========================================" << endl;
     cout << "             ANALYSIS VERDICT           " << endl;
@@ -109,15 +111,22 @@ int main(int argc, char *argv[]) {
           if (choice == 'E' || choice == 'e') {
             cout << "[+] Python Bridge başlatılıyor..." << endl;
             
-            string command = "python3 bridge.py " + hash + " " + to_string(hRes.probabilityScore) + " " + verdict;
-            cout << "[>] Executing: " << command << endl;
-            
-            int ret = system(command.c_str());
-            
-            if (ret == 0) {
+            pid_t pid = fork();
+            if (pid == 0) {
+              string scoreStr = to_string(hRes.probabilityScore);
+              const char* args[] = {"python3", "bridge.py", hash.c_str(), scoreStr.c_str(), verdict.c_str(), NULL};
+              execvp("python3", (char* const*)args);
+              exit(1);
+            } else if (pid > 0) {
+              int status;
+              waitpid(pid, &status, 0);
+              if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
                 cout << "[+] Web3 ekosistemini guvenli tuttugunuz icin tesekkurler!" << endl;
-            } else {
+              } else {
                 cout << "[-] Köprü çalıştırılırken bir hata oluştu veya işlem başarısız oldu." << endl;
+              }
+            } else {
+              cout << "[-] Failed to fork process." << endl;
             }
           } else {
             cout << "[+] Yayin iptal edildi (Broadcast cancelled)." << endl;

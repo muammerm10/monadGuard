@@ -31,6 +31,9 @@ const HashLookup: NextPage = () => {
 
   const [mbResult, setMbResult] = useState<{ isKnown: boolean; details?: any } | null>(null);
   const [isFetchingMb, setIsFetchingMb] = useState(false);
+  const [inputError, setInputError] = useState("");
+
+  const isLoading = isFetching || isFetchingMb;
 
   useEffect(() => {
     if (!queryHash) {
@@ -61,13 +64,15 @@ const HashLookup: NextPage = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setInputError("");
+
     let formattedHash = searchInput.trim();
     if (!formattedHash.startsWith("0x")) {
       formattedHash = "0x" + formattedHash;
     }
 
     if (formattedHash.length !== 66) {
-      alert("Invalid SHA-256 hash format.");
+      setInputError("Invalid SHA-256 hash format. Enter 64 hex characters.");
       return;
     }
 
@@ -102,14 +107,15 @@ const HashLookup: NextPage = () => {
             <button
               type="submit"
               className="btn btn-primary btn-lg shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_20px_rgba(123,63,228,0.5)] border-none shrink-0"
-              disabled={isFetching || isFetchingMb}
+              disabled={isLoading}
             >
-              {isFetching || isFetchingMb ? <span className="loading loading-spinner"></span> : "Scan Hash"}
+              {isLoading ? <span className="loading loading-spinner"></span> : "Scan Hash"}
             </button>
           </form>
+          {inputError && <p className="text-error text-sm mt-3 ml-2 font-medium">{inputError}</p>}
         </div>
 
-        {queryHash && !isFetching && !isFetchingMb && !error && (
+        {queryHash && !isLoading && !error && (
           <div className="animate-fadeIn">
             {isKnown ? (
               <div className="bg-error/10 border border-error/30 rounded-2xl p-8 flex flex-col items-center text-center shadow-[0_0_30px_rgba(239,68,68,0.15)]">

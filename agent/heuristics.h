@@ -9,4 +9,4 @@ struct HEURISTICS_RESULT {
   bool isCheapClone;
 };
 
-HEURISTICS_RESULT runHeuristics(const std::vector<uint8_t> &data, const std::string &fileHash);
+HEURISTICS_RESULT runHeuristics(const std::vector<uint8_t> &data, const std::string &fileHash, bool apiMode);

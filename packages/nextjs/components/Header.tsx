@@ -40,6 +40,11 @@ export const menuLinks: HeaderMenuLink[] = [
     href: "/feed",
     icon: <ListBulletIcon className="h-4 w-4" />,
   },
+  {
+    label: "My Submissions",
+    href: "/my-submissions",
+    icon: <ListBulletIcon className="h-4 w-4" />,
+  },
 ];
 
 export const HeaderMenuLinks = () => {

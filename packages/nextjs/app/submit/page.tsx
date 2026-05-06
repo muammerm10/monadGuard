@@ -26,6 +26,8 @@ const SubmitThreat: NextPage = () => {
   const [family, setFamily] = useState("");
   const [score, setScore] = useState(0);
   const [isKnown, setIsKnown] = useState(false);
+  const [isCheapClone, setIsCheapClone] = useState(false);
+  const [isSimulated, setIsSimulated] = useState(false);
   const [analysisDone, setAnalysisDone] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +37,23 @@ const SubmitThreat: NextPage = () => {
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: hashData,
   });
+
+  // Reset form after successful confirmation
+  useEffect(() => {
+    if (isConfirmed) {
+      const t = setTimeout(() => {
+        setFile(null);
+        setAnalysisDone(false);
+        setHash("");
+        setScore(0);
+        setFamily("");
+        setIsKnown(false);
+        setIsCheapClone(false);
+        setIsSimulated(false);
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  }, [isConfirmed]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -88,6 +107,8 @@ const SubmitThreat: NextPage = () => {
       setScore(data.score);
       setFamily(data.family || "UNKNOWN");
       setIsKnown(data.isKnown || false);
+      setIsCheapClone(data.isCheapClone || false);
+      setIsSimulated(data.simulated || false);
       setAnalysisDone(true);
       toast.success("Heuristic analysis completed!");
     } catch (error: any) {
@@ -102,6 +123,16 @@ const SubmitThreat: NextPage = () => {
   const handleSubmit = async () => {
     if (!isConnected) {
       toast.error("Lütfen önce sağ üst köşeden cüzdanınızı bağlayın!");
+      return;
+    }
+
+    if (isKnown) {
+      toast.error("Cannot submit a known threat.");
+      return;
+    }
+
+    if (isCheapClone) {
+      toast.error("Cheap clone detected. Staking is blocked.");
       return;
     }
 
@@ -253,6 +284,36 @@ const SubmitThreat: NextPage = () => {
               </div>
             </div>
 
+            {/* Feature 5: Simulated mode warning */}
+            {isSimulated && (
+              <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex items-start gap-3">
+                <ExclamationTriangleIcon className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-warning" suppressHydrationWarning>
+                    ⚠ Simulated Results
+                  </p>
+                  <p className="text-xs text-warning/80 mt-1" suppressHydrationWarning>
+                    Native C++ agent not available. Results are simulated and may not be accurate.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Feature 4: Cheap clone warning */}
+            {isCheapClone && (
+              <div className="bg-error/10 border border-error/30 rounded-xl p-4 flex items-start gap-3">
+                <ExclamationTriangleIcon className="h-5 w-5 text-error shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-error" suppressHydrationWarning>
+                    Cheap Clone Detected
+                  </p>
+                  <p className="text-xs text-error/80 mt-1" suppressHydrationWarning>
+                    This file shares an import hash with a known malware sample. Staking is blocked.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {isKnown ? (
               <div className="bg-error/10 border border-error/30 rounded-xl p-4 text-center">
                 <p className="text-error font-bold" suppressHydrationWarning>
@@ -282,8 +343,8 @@ const SubmitThreat: NextPage = () => {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isPending || isConfirming || !isConnected}
-                  className={`btn flex-[2] text-lg h-14 shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_25px_rgba(123,63,228,0.5)] border-none ${!isConnected ? "btn-disabled bg-base-300 text-base-content/50" : "btn-primary"}`}
+                  disabled={isPending || isConfirming || !isConnected || isCheapClone}
+                  className={`btn flex-[2] text-lg h-14 shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_25px_rgba(123,63,228,0.5)] border-none ${!isConnected || isCheapClone ? "btn-disabled bg-base-300 text-base-content/50" : "btn-primary"}`}
                 >
                   {!isConnected ? (
                     <span suppressHydrationWarning>Lütfen Cüzdan Bağlayın</span>
