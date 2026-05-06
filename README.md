@@ -4,6 +4,7 @@
   <strong>Fortifying the Ledger through Decentralized Heuristics</strong><br>
   A high-performance C++ heuristic engine bridged to the Monad network.
 </p>
+<img width="1919" height="909" alt="image" src="https://github.com/user-attachments/assets/a345dd20-2d5b-47e8-8c11-53622e29766b" />
 
 ## Overview
 
