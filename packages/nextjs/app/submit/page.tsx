@@ -28,6 +28,9 @@ const SubmitThreat: NextPage = () => {
   const [isKnown, setIsKnown] = useState(false);
   const [isCheapClone, setIsCheapClone] = useState(false);
   const [isSimulated, setIsSimulated] = useState(false);
+  const [analysisDetails, setAnalysisDetails] = useState<string[]>([]);
+  const [fileType, setFileType] = useState("");
+  const [entropy, setEntropy] = useState<number | null>(null);
   const [analysisDone, setAnalysisDone] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +53,9 @@ const SubmitThreat: NextPage = () => {
         setIsKnown(false);
         setIsCheapClone(false);
         setIsSimulated(false);
+        setAnalysisDetails([]);
+        setFileType("");
+        setEntropy(null);
       }, 3000);
       return () => clearTimeout(t);
     }
@@ -109,6 +115,9 @@ const SubmitThreat: NextPage = () => {
       setIsKnown(data.isKnown || false);
       setIsCheapClone(data.isCheapClone || false);
       setIsSimulated(data.simulated || false);
+      setAnalysisDetails(data.details || []);
+      setFileType(data.fileType || "");
+      setEntropy(data.entropy ?? null);
       setAnalysisDone(true);
       toast.success("Heuristic analysis completed!");
     } catch (error: any) {
@@ -281,6 +290,54 @@ const SubmitThreat: NextPage = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* File type + entropy row */}
+                {(fileType || entropy !== null) && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-base-300/50">
+                    {fileType && (
+                      <div>
+                        <p
+                          className="text-xs text-base-content/60 uppercase tracking-wider mb-1"
+                          suppressHydrationWarning
+                        >
+                          File Type
+                        </p>
+                        <span className="px-2 py-0.5 rounded bg-base-300 text-xs font-mono font-medium">
+                          {fileType}
+                        </span>
+                      </div>
+                    )}
+                    {entropy !== null && (
+                      <div>
+                        <p
+                          className="text-xs text-base-content/60 uppercase tracking-wider mb-1"
+                          suppressHydrationWarning
+                        >
+                          Entropy
+                        </p>
+                        <span className={`text-sm font-bold ${entropy > 7.2 ? "text-error" : "text-success"}`}>
+                          {entropy.toFixed(2)} / 8.00
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Heuristics details */}
+                {analysisDetails.length > 0 && (
+                  <details className="pt-2 border-t border-base-300/50">
+                    <summary className="text-xs text-base-content/50 cursor-pointer hover:text-base-content/80 transition-colors">
+                      View analysis details ({analysisDetails.length} findings)
+                    </summary>
+                    <ul className="mt-2 space-y-1">
+                      {analysisDetails.map((d, i) => (
+                        <li key={i} className="text-xs font-mono text-base-content/70 flex items-start gap-1">
+                          <span className="text-primary shrink-0">›</span> {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </div>
             </div>
 
