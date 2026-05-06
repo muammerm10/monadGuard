@@ -1,4 +1,4 @@
-<h1 align="center">MonadGuard: 0-Day Threat Registry</h1>
+<h1 align="center">MonadGuard: Threat Registry</h1>
 
 <p align="center">
   <strong>Fortifying the Ledger through Decentralized Heuristics</strong><br>
