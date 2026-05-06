@@ -3,10 +3,15 @@
 import React, { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { hardhat } from "viem/chains";
-import { Bars3Icon, ShieldExclamationIcon, PlusCircleIcon, MagnifyingGlassIcon, ListBulletIcon } from "@heroicons/react/24/outline";
+import {
+  Bars3Icon,
+  ListBulletIcon,
+  MagnifyingGlassIcon,
+  PlusCircleIcon,
+  ShieldExclamationIcon,
+} from "@heroicons/react/24/outline";
 import { RainbowKitCustomConnectButton } from "~~/components/scaffold-eth";
-import { useOutsideClick, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import { useOutsideClick } from "~~/hooks/scaffold-eth";
 
 type HeaderMenuLink = {
   label: string;
@@ -64,8 +69,6 @@ export const HeaderMenuLinks = () => {
 };
 
 export const Header = () => {
-  const { targetNetwork } = useTargetNetwork();
-
   const burgerMenuRef = useRef<HTMLDetailsElement>(null);
   useOutsideClick(burgerMenuRef, () => {
     burgerMenuRef?.current?.removeAttribute("open");
@@ -92,9 +95,7 @@ export const Header = () => {
             <ShieldExclamationIcon className="h-6 w-6 text-primary" />
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-xl tracking-tight text-white flex items-center gap-2">
-              MonadGuard
-            </span>
+            <span className="font-bold text-xl tracking-tight text-white flex items-center gap-2">MonadGuard</span>
             <span className="text-xs text-primary/80 font-mono tracking-widest uppercase">0-Day Threat Registry</span>
           </div>
         </Link>

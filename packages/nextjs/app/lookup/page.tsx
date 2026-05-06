@@ -3,21 +3,25 @@
 import { useState } from "react";
 import type { NextPage } from "next";
 import { useReadContract } from "wagmi";
-import { MagnifyingGlassIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
-import { MONAD_GUARD_ADDRESS, MONAD_GUARD_ABI } from "~~/utils/monadGuard";
+import { CheckCircleIcon, MagnifyingGlassIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { MONAD_GUARD_ABI, MONAD_GUARD_ADDRESS } from "~~/utils/monadGuard";
 
 const HashLookup: NextPage = () => {
   const [searchInput, setSearchInput] = useState("");
   const [queryHash, setQueryHash] = useState<`0x${string}` | undefined>(undefined);
 
-  const { data: isKnown, isFetching, error } = useReadContract({
+  const {
+    data: isKnown,
+    isFetching,
+    error,
+  } = useReadContract({
     address: MONAD_GUARD_ADDRESS,
     abi: MONAD_GUARD_ABI,
     functionName: "threats",
     args: queryHash ? [queryHash] : undefined,
     query: {
       enabled: !!queryHash,
-    }
+    },
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -56,12 +60,12 @@ const HashLookup: NextPage = () => {
                 placeholder="Enter 64-character SHA-256 hex..."
                 className="input input-lg input-bordered w-full pl-12 bg-base-100 border-base-300 focus:border-primary focus:ring-1 focus:ring-primary font-mono text-sm shadow-inner"
                 value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
+                onChange={e => setSearchInput(e.target.value)}
                 required
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-lg shadow-[0_0_15px_rgba(123,63,228,0.3)] hover:shadow-[0_0_20px_rgba(123,63,228,0.5)] border-none shrink-0"
               disabled={isFetching}
             >
@@ -93,7 +97,8 @@ const HashLookup: NextPage = () => {
                 </div>
                 <h3 className="text-2xl font-bold text-success mb-2">No Threat Found</h3>
                 <p className="text-base-content mb-4 max-w-xl">
-                  This hash is not currently in the MonadGuard registry. Note that this does not guarantee the file is safe, only that it is unknown to this registry.
+                  This hash is not currently in the MonadGuard registry. Note that this does not guarantee the file is
+                  safe, only that it is unknown to this registry.
                 </p>
                 <div className="bg-base-100/50 p-4 rounded-xl w-full border border-success/20">
                   <p className="text-xs text-base-content/50 uppercase tracking-widest mb-1">Queried Hash</p>

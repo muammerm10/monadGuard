@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
-import { promisify } from "util";
-import path from "path";
+import crypto from "crypto";
 import fs from "fs";
 import os from "os";
+import path from "path";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     // Only allow specific extensions or handle everything?
     // User requested EXE or ELF
     const buffer = Buffer.from(await file.arrayBuffer());
-    
+
     // Write to a temporary file
     const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, `monadguard_${Date.now()}_${file.name}`);
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Call the C++ agent with the --api flag
     // Adjust the path to where the compiled agent is expected to be
     const agentPath = path.resolve(process.cwd(), "../../agent/monadGuardAgent.exe");
-    
+
     let result;
     try {
       if (fs.existsSync(agentPath)) {
@@ -38,21 +39,20 @@ export async function POST(req: NextRequest) {
       } else {
         // Fallback: If agent is not compiled, mock it for the UI demonstration
         console.warn(`[API] Agent executable not found at ${agentPath}. Falling back to simulation.`);
-        
+
         // Let's at least calculate the real SHA256 in Node.js
-        const crypto = require("crypto");
         const hashSum = crypto.createHash("sha256");
         hashSum.update(buffer);
         const hexHash = "0x" + hashSum.digest("hex");
-        
+
         // Simulate a heuristic score based on the file size
         const simulatedScore = (file.size % 60) + 40; // Random score between 40-99
-        
+
         result = {
           hash: hexHash,
           score: simulatedScore,
           family: "UNKNOWN",
-          isKnown: false
+          isKnown: false,
         };
       }
     } catch (e: any) {
